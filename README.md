@@ -151,38 +151,6 @@ This allows the system to consider both:
 * What the user says the item is
 
 
-
-# Example
-
-Suppose a user reports:
-
-```text
-Lost Item:
-Silver HP Envy Laptop
-```
-
-The system receives:
-
-```text
-Lost Image
-+
-"Silver HP Envy Laptop"
-```
-
-Possible found items:
-
-| Found Item            | Image Similarity | Text Similarity | Final Score |
-| --------------------- | ---------------: | --------------: | ----------: |
-| Silver HP Envy Laptop |           0.8439 |          1.0000 |      0.9063 |
-| Black HP Envy Laptop  |           0.7459 |          0.9596 |      0.8314 |
-| Silver HP Laptop      |           0.7305 |          0.8981 |           — |
-| Gold HP Laptop        |           0.6130 |          0.7838 |           — |
-| Maroon Backpack       |           0.4617 |          0.5881 |           — |
-
-The system ranks the most likely match first.
-
-
-
 # Project Structure
 
 ```text
