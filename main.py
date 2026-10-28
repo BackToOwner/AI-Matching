@@ -8,6 +8,7 @@ from fastapi import (
 
 from PIL import Image
 from io import BytesIO
+import requests
 
 from matcher import (
     match_lost_against_found,
@@ -15,6 +16,7 @@ from matcher import (
 )
 
 from database import (
+    supabase,
     get_found_items,
     get_lost_items
 )
@@ -74,6 +76,96 @@ def health_check():
         "status": "healthy",
         "model": "google/siglip-base-patch16-224"
     }
+
+
+# ============================================================
+# GENERATE EMBEDDINGS FOR AN EXISTING REPORT-LINKED ITEM
+# ============================================================
+
+@app.post("/embeddings/{item_type}/{report_id}")
+def generate_existing_item_embeddings(item_type: str, report_id: str):
+    if item_type not in ("lost", "found"):
+        raise HTTPException(status_code=400, detail="Invalid item type.")
+
+    table = "lost_items" if item_type == "lost" else "found_items"
+
+    try:
+        response = (
+            supabase.table(table)
+            .select("id, report_id, title, image_url")
+            .eq("report_id", report_id)
+            .maybe_single()
+            .execute()
+        )
+
+        item = response.data
+        if not item:
+            raise HTTPException(
+                status_code=404,
+                detail="Existing AI item for this report was not found."
+            )
+
+        image_url = item.get("image_url")
+        if not image_url:
+            raise HTTPException(
+                status_code=400,
+                detail="The existing item has no image URL."
+            )
+
+        image_response = requests.get(image_url, timeout=30)
+        image_response.raise_for_status()
+
+        image = Image.open(
+            BytesIO(image_response.content)
+        ).convert("RGB")
+
+        image_embedding = (
+            get_image_embedding(image).detach().cpu().tolist()
+        )
+        text_embedding = (
+            get_text_embedding(item["title"]).detach().cpu().tolist()
+        )
+
+        if len(image_embedding) != 768 or len(text_embedding) != 768:
+            raise HTTPException(
+                status_code=500,
+                detail="Unexpected SigLIP embedding dimensions."
+            )
+
+        saved = (
+            supabase.table(table)
+            .update({
+                "image_embedding": image_embedding,
+                "text_embedding": text_embedding
+            })
+            .eq("id", item["id"])
+            .eq("report_id", report_id)
+            .select("id, report_id")
+            .execute()
+        )
+
+        if not saved.data:
+            raise HTTPException(
+                status_code=500,
+                detail="Embeddings were not confirmed saved."
+            )
+
+        return {
+            "success": True,
+            "item_id": item["id"],
+            "report_id": report_id,
+            "image_embedding_dimension": len(image_embedding),
+            "text_embedding_dimension": len(text_embedding)
+        }
+
+    except HTTPException:
+        raise
+    except Exception as error:
+        print(f"Embedding generation failed for {report_id}: {error}")
+        raise HTTPException(
+            status_code=500,
+            detail="Could not generate or save embeddings."
+        )
 
 
 # ============================================================
@@ -293,6 +385,7 @@ async def match_item(
 
         matches.append({
             "id": result["id"],
+            "report_id": result.get("report_id"),
             "image": result["image_url"],
             "title": result["title"],
             "location": result["location"],
@@ -442,6 +535,7 @@ async def match_found_item(
 
         matches.append({
             "id": result["id"],
+            "report_id": result.get("report_id"),
             "image": result["image_url"],
             "title": result["title"],
             "location": result["location"],

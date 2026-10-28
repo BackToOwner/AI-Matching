@@ -12,7 +12,7 @@ from supabase import create_client, Client
 load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+SUPABASE_KEY = os.getenv("SUPABASE_SECRET_KEY") or os.getenv("SUPABASE_KEY")
 
 
 if not SUPABASE_URL:
@@ -109,6 +109,7 @@ def get_found_items():
 
             # Database ID
             "id": item["id"],
+            "report_id": item["report_id"],
 
             # Original filename
             "image": (
@@ -168,6 +169,7 @@ def get_lost_items():
 
         lost_items.append({
             "id": item["id"],
+            "report_id": item["report_id"],
             "image": (
                 image_url.split("/")[-1]
                 if image_url

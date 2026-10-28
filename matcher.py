@@ -192,6 +192,7 @@ def match_lost_against_found(
 
         results.append({
             "id": found_item.get("id"),
+            "report_id": found_item.get("report_id"),
             "image": found_item.get("image"),
             "image_url": found_item.get("image_url"),
             "title": found_item.get("title"),
@@ -258,6 +259,7 @@ def match_found_against_lost(
 
         results.append({
             "id": lost_item.get("id"),
+            "report_id": lost_item.get("report_id"),
             "image": lost_item.get("image"),
             "image_url": lost_item.get("image_url"),
             "title": lost_item.get("title"),
